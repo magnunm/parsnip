@@ -1,0 +1,14 @@
+[package]
+name = "parsnip"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "parsnip"
+path = "src/lib.rs"
+
+[[bin]]
+name = "parsnip-cli"
+path = "src/main.rs"
+
+[dependencies]

@@ -12,3 +12,7 @@ name = "parsnip-cli"
 path = "src/main.rs"
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ulid = "1.0"
+anyhow = "1.0.71"

@@ -1,13 +1,22 @@
+pub mod broker;
+
+use broker::Broker;
+
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Message {
     pub task_id: String,
     pub signature: String,
-    pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ResultMessage {
+    pub signature_id: String,
+    pub result: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -16,6 +25,7 @@ where
     T: Task,
 {
     pub arg: T::ArgumentType,
+    pub id: String,
 }
 
 impl<T> Signature<T>
@@ -23,8 +33,7 @@ where
     T: Task,
 {
     pub fn from_serialized(signature: String) -> Result<Self, Error> {
-        let result: Self = serde_json::from_str(&signature)?;
-        Ok(result)
+        Ok(serde_json::from_str(&signature)?)
     }
 }
 
@@ -48,8 +57,8 @@ where
     fn signature(&self) -> &Signature<Self>;
 }
 
-pub trait TaskRunnerTrait {
-    fn run_task(&self, app: &App) -> Result<(), Error>;
+pub trait TaskRunnerTrait<B: Broker> {
+    fn run_task(&self, app: &App<B>) -> Result<(), Error>;
 }
 
 pub struct TaskRunner<T>
@@ -68,42 +77,47 @@ where
     }
 }
 
-impl<T> TaskRunnerTrait for TaskRunner<T>
+impl<T, B: Broker + 'static> TaskRunnerTrait<B> for TaskRunner<T>
 where
     T: Task,
 {
-    fn run_task(&self, app: &App) -> Result<(), Error> {
-        // TODO: Do something with task result
-        T::run(&self.task.signature().arg);
+    fn run_task(&self, app: &App<B>) -> Result<(), Error> {
+        let result = T::run(&self.task.signature().arg);
+        app.store_task_result(ResultMessage {
+            result: serde_json::to_string(&result)?,
+            signature_id: self.task.signature().id.clone(),
+        })?;
         Ok(())
     }
 }
 
-pub type TaskRunnerBuilderResult = Result<Box<dyn TaskRunnerTrait>, Error>;
-pub type TaskRunnerBuilder = Box<dyn Fn(String) -> TaskRunnerBuilderResult>;
+pub type TaskRunnerBuilderResult<B> = Result<Box<dyn TaskRunnerTrait<B>>, Error>;
+pub type TaskRunnerBuilder<B> = Box<dyn Fn(String) -> TaskRunnerBuilderResult<B>>;
 
-pub fn build_task_runner<T: Task + 'static>(
+pub fn build_task_runner<T: Task + 'static, B: Broker + 'static>(
     serialized_signature: String,
-) -> TaskRunnerBuilderResult {
+) -> TaskRunnerBuilderResult<B> {
     let signature = Signature::<T>::from_serialized(serialized_signature)?;
     let task = T::from_signature(signature);
     Ok(Box::new(TaskRunner::<T>::new(task)))
 }
 
-pub struct App {
-    task_runner_builders: HashMap<String, TaskRunnerBuilder>,
+pub struct App<'a, B: Broker> {
+    task_runner_builders: HashMap<String, TaskRunnerBuilder<B>>,
+    broker: &'a B,
 }
 
-impl App {
-    pub fn new() -> Self {
+impl<'a, B: Broker + 'static> App<'a, B> {
+    pub fn new(broker: &'a B) -> Self {
         Self {
             task_runner_builders: HashMap::new(),
+            broker,
         }
     }
 
     pub fn register_task<T: Task + 'static>(&mut self) {
         self.task_runner_builders
-            .insert(T::ID.into(), Box::new(build_task_runner::<T>));
+            .insert(T::ID.into(), Box::new(build_task_runner::<T, B>));
     }
 
     pub fn handle_message(&self, message: &str) -> Result<(), Error> {
@@ -118,8 +132,13 @@ impl App {
             )),
         }?;
 
-        task_runner.run_task(&self)?;
+        task_runner.run_task(self)?;
 
+        Ok(())
+    }
+
+    pub fn store_task_result(&self, result: ResultMessage) -> Result<(), Error> {
+        self.broker.store_result(result)?;
         Ok(())
     }
 }

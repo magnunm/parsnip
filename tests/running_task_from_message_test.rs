@@ -1,9 +1,8 @@
 use anyhow;
-use parsnip::{self, broker::Broker, App, Message, ResultMessage, Signature, Task};
+use parsnip::{self, broker::Broker, App, Message, ResultMessage, Signature, Task, Worker};
 use serde_json;
 use std::collections::LinkedList;
 use std::sync::RwLock;
-use ulid::Ulid;
 
 struct InMemoryTestBroker {
     pub task_results: RwLock<Vec<ResultMessage>>,
@@ -81,16 +80,10 @@ fn test_running_task_from_message() -> anyhow::Result<()> {
 
     app.register_task::<SummationTask>();
 
-    let signature = Signature::<SummationTask> {
-        arg: vec![1, 2, 3],
-        id: Ulid::new().to_string(),
-    };
-    let message = Message {
-        task_id: SummationTask::ID.into(),
-        signature: serde_json::to_string(&signature)?,
-    };
+    app.queue_task::<SummationTask>(vec![1, 2, 3])?;
 
-    app.handle_message(&serde_json::to_string(&message)?)?;
+    let worker = Worker::new(&app);
+    worker.take_first_task_in_queue()?;
 
     assert_eq!(
         broker

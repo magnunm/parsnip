@@ -1,9 +1,7 @@
 use anyhow;
-use parsnip::{self, broker::Broker, Message, ResultMessage, Signature, Task};
-use serde_json;
+use parsnip::{self, broker::Broker, Message, ResultMessage, Signature, Task, Worker};
 use std::collections::LinkedList;
 use std::sync::RwLock;
-use ulid::Ulid;
 
 struct InMemoryTestBroker {
     task_results: RwLock<Vec<ResultMessage>>,
@@ -77,19 +75,12 @@ impl Task for HelloWorldTask {
 fn main() -> Result<(), anyhow::Error> {
     let mut broker = InMemoryTestBroker::new();
     let mut app = parsnip::App::new(&mut broker);
-
     app.register_task::<HelloWorldTask>();
 
-    let signature = Signature::<HelloWorldTask> {
-        arg: (),
-        id: Ulid::new().to_string(),
-    };
-    let message = Message {
-        task_id: HelloWorldTask::ID.into(),
-        signature: serde_json::to_string(&signature)?,
-    };
+    let worker = Worker::new(&app);
 
-    app.handle_message(&serde_json::to_string(&message)?)?;
+    app.queue_task::<HelloWorldTask>(())?;
+    worker.take_first_task_in_queue()?;
 
     Ok(())
 }

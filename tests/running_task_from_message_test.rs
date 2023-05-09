@@ -1,5 +1,8 @@
 use anyhow;
-use parsnip::{self, broker::Broker, App, Message, ResultMessage, Signature, Task, Worker};
+use parsnip::{
+    self, broker::Broker, messages::Message, messages::ResultMessage, task::Signature, task::Task,
+    worker::Worker, App,
+};
 use serde_json;
 use std::collections::LinkedList;
 use std::sync::RwLock;

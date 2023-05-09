@@ -1,4 +1,4 @@
-use super::{Message, ResultMessage};
+use super::messages::{Message, ResultMessage};
 use anyhow::Result;
 
 pub trait Broker {

@@ -29,12 +29,12 @@ impl Broker for RedisBroker {
         Ok(())
     }
 
-    fn pop_message(&self) -> Result<crate::messages::Message> {
+    fn pop_message(&self) -> Result<Option<crate::messages::Message>> {
         let mut con = self.redis_client.get_connection()?;
         let serialized_message: Option<String> = con.rpop(&self.queue, None)?;
         match serialized_message {
-            Some(v) => Ok(serde_json::from_str(&v)?),
-            None => Err(anyhow::anyhow!("Task queue is empty")),
+            Some(v) => Ok(Some(serde_json::from_str(&v)?)),
+            None => Ok(None),
         }
     }
 

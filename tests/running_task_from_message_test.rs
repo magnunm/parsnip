@@ -30,15 +30,15 @@ impl Broker for InMemoryTestBroker {
         Ok(())
     }
 
-    fn pop_message(&self) -> anyhow::Result<Message> {
+    fn pop_message(&self) -> anyhow::Result<Option<Message>> {
         match self
             .queue
             .write()
             .expect("Failed to aquire lock")
             .pop_front()
         {
-            Some(message) => Ok(message),
-            None => Err(anyhow::anyhow!("No messages in queue!")),
+            Some(message) => Ok(Some(message)),
+            None => Ok(None),
         }
     }
 

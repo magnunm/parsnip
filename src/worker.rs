@@ -19,6 +19,9 @@ impl<'a, B: Broker + 'static> Worker<'a, B> {
 
     pub fn take_first_task_in_queue(&self) -> Result<(), Error> {
         let message = self.app.broker.pop_message()?;
-        self.app.handle_message(&message)
+        match message {
+            Some(m) => self.app.handle_message(&m),
+            None => Err(anyhow::anyhow!("No messages in queue")),
+        }
     }
 }

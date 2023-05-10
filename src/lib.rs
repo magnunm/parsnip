@@ -1,4 +1,5 @@
 pub mod broker;
+pub mod brokers;
 pub mod messages;
 mod runner;
 pub mod task;

@@ -11,3 +11,8 @@ pub struct ResultMessage {
     pub signature_id: String,
     pub result: String,
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum Command {
+    StopWorker,
+}

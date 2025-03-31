@@ -29,7 +29,8 @@ impl RedisBroker {
 impl Broker for RedisBroker {
     fn push_message(&self, message: &crate::messages::Message) -> Result<()> {
         let mut con = self.redis_client.get_connection()?;
-        con.lpush(&self.queue, serde_json::to_string(&message)?)?;
+        let message_as_str = serde_json::to_string(&message)?;
+        con.lpush::<&str, String, ()>(&self.queue, message_as_str)?;
         Ok(())
     }
 
@@ -44,7 +45,7 @@ impl Broker for RedisBroker {
 
     fn store_result(&self, result_message: crate::messages::ResultMessage) -> Result<()> {
         let mut con = self.redis_client.get_connection()?;
-        con.hset(
+        con.hset::<&str, &str, String, ()>(
             &self.result_hash_map,
             &result_message.signature_id,
             serde_json::to_string(&result_message)?,
@@ -62,7 +63,7 @@ impl Broker for RedisBroker {
 
     fn push_command(&self, command: &crate::messages::Command, worker_id: &str) -> Result<()> {
         let mut con = self.redis_client.get_connection()?;
-        con.lpush(
+        con.lpush::<&str, String, ()>(
             &format!("{}_{}", self.command_queue_prefix, worker_id),
             serde_json::to_string(&command)?,
         )?;
@@ -83,7 +84,7 @@ impl Broker for RedisBroker {
 
     fn update_worker_info(&self, info: WorkerInfo) -> Result<()> {
         let mut con = self.redis_client.get_connection()?;
-        con.hset(
+        con.hset::<&str, &str, String, ()>(
             &self.worker_register,
             &info.id,
             serde_json::to_string(&info)?,

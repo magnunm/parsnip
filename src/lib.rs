@@ -38,7 +38,7 @@ impl<'a, B: Broker + 'static> App<'a, B> {
     /// Returns the signature_id for the task invocation, which can be used to
     /// lookup the result of running the task.
     pub fn queue_task<T: Task + 'static>(&self, arg: T::ArgumentType) -> Result<String, Error> {
-        if !self.task_runner_builders.contains_key(T::ID.into()) {
+        if !self.task_runner_builders.contains_key(T::ID) {
             anyhow::bail!(
                 "Can not queue task with ID '{}' as it is not registered.",
                 T::ID

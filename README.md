@@ -1,6 +1,6 @@
 # Parsnip
 
-A Rust library for distributed, asynchronous computing using a task queue.
+An experiment creating a task queue for distributed, asynchronous computing in Rust.
 Inspired by [Celery](https://docs.celeryq.dev/en/stable/).
 
 ## Examples
